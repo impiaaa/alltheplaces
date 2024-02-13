@@ -41,3 +41,4 @@ scrapy-zyte-api = "*"
 cryptography = "*"
 twisted = "22.10.0"
 phpserialize = "*"
+postal = {ref = "427f0a78115822596f010efe2e33855f6135c5f4", git = "git+https://github.com/openvenues/pypostal.git"}

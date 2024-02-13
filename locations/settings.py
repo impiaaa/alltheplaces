@@ -103,6 +103,7 @@ ITEM_PIPELINES = {
     "locations.pipelines.state_clean_up.StateCodeCleanUpPipeline": 356,
     "locations.pipelines.phone_clean_up.PhoneCleanUpPipeline": 360,
     "locations.pipelines.extract_gb_postcode.ExtractGBPostcodePipeline": 400,
+    "locations.pipelines.parse_address.ParseAddressPipeline": 401,
     "locations.pipelines.assert_url_scheme.AssertURLSchemePipeline": 500,
     "locations.pipelines.drop_logo.DropLogoPipeline": 550,
     "locations.pipelines.closed.ClosePipeline": 650,
