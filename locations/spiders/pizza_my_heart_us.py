@@ -1,6 +1,6 @@
 import json
 
-from locations.categories import Categories
+from locations.categories import Categories, apply_category
 from locations.linked_data_parser import LinkedDataParser
 from locations.structured_data_spider import StructuredDataSpider
 
@@ -8,7 +8,7 @@ from locations.structured_data_spider import StructuredDataSpider
 class PizzaMyHeartUSSpider(StructuredDataSpider):
     name = "pizza_my_heart_us"
     start_urls = ["https://www.pizzamyheart.com/store-locator/"]
-    item_attributes = {"brand": "Pizza My Heart", "brand_wikidata": "Q7199970", "extras": Categories.RESTAURANT.value}
+    item_attributes = {"brand": "Pizza My Heart", "brand_wikidata": "Q7199970"}
     wanted_types = ["Organization", "FoodEstablishment"]
 
     def parse(self, response):
@@ -21,6 +21,11 @@ class PizzaMyHeartUSSpider(StructuredDataSpider):
         if ld_data["name"] in self.locations:
             loc = self.locations[ld_data["name"]]
             ld_data["geo"] = {"latitude": loc["lat"], "longitude": loc["lng"]}
+
+    def post_process_item(self, item, response, ld_data):
+        apply_category(Categories.RESTAURANT, item)
+        apply_category({"cuisine": "pizza"}, item)
+        yield item
 
     def iter_linked_data(self, response):
         for ld_obj in super().iter_linked_data(response):
