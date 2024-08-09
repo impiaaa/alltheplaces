@@ -5,9 +5,9 @@ def parse_address_dict(address, language=None, country=None):
     return dict(item[::-1] for item in parse_address(address, language=language, country=country))
 
 
-def assign_if(addr, addr_key, item, item_key):
+def assign_if(addr, addr_key, item, item_key, transform=lambda s: s):
     if addr_key in addr and not item.get(item_key):
-        item[item_key] = addr[addr_key]
+        item[item_key] = transform(addr[addr_key])
 
 
 class ParseAddressPipeline:
@@ -23,9 +23,9 @@ class ParseAddressPipeline:
 
             addr = parse_address_dict(item["addr_full"], country=item.get("country") or None)
             assign_if(addr, "house_number", item, "housenumber")
-            assign_if(addr, "road", item, "street")
-            assign_if(addr, "city", item, "city")
-            assign_if(addr, "state", item, "state")
+            assign_if(addr, "road", item, "street", lambda s: s.title())
+            assign_if(addr, "city", item, "city", lambda s: s.title())
+            assign_if(addr, "state", item, "state", lambda s: s.upper())
             assign_if(addr, "postcode", item, "postcode")
             assign_if(addr, "country", item, "country")
 
@@ -33,6 +33,6 @@ class ParseAddressPipeline:
 
             addr = parse_address_dict(item["street_address"], country=item.get("country") or None)
             assign_if(addr, "house_number", item, "housenumber")
-            assign_if(addr, "road", item, "street")
+            assign_if(addr, "road", item, "street", lambda s: s.title())
 
         return item
