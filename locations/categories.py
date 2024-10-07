@@ -349,6 +349,7 @@ def apply_category(category, item: Feature):
 
 
 top_level_tags = [
+    "advertising",
     "amenity",
     "club",
     "craft",
