@@ -31,6 +31,7 @@ json5 = "*"
 openpyxl = "*"
 phonenumbers = "*"
 phpserialize = "*"
+postal = {ref = "427f0a78115822596f010efe2e33855f6135c5f4", git = "git+https://github.com/openvenues/pypostal.git"}
 pyarrow = "*"
 pycountry = "*"
 pygeohash = "*"
@@ -48,4 +49,3 @@ twisted = {extras = ["http2"], version = "*"}
 tzdata = "*"
 unidecode = "*"
 xmltodict = "*"
-postal = {ref = "427f0a78115822596f010efe2e33855f6135c5f4", git = "git+https://github.com/openvenues/pypostal.git"}
