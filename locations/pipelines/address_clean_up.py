@@ -18,7 +18,7 @@ def clean_address(address: list[str] | str, min_length=2) -> str:
         return ""
 
     if isinstance(address, str):
-        if address.strip().lower() == "undefined":
+        if address.strip().lower() in ("undefined", "n/a"):
             return ""
 
     if isinstance(address, list):
@@ -66,6 +66,6 @@ class AddressCleanUpPipeline:
 
         for key, min_length in targeted_fields.items():
             if value := item.get(key):
-                if isinstance(value, str):
+                if isinstance(value, str) or isinstance(value, list):
                     item[key] = clean_address(value, min_length)
         return item

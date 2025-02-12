@@ -51,7 +51,7 @@ class NSI(metaclass=Singleton):
         """
         self._ensure_loaded()
         supplied_url_domain = urlparse(url).netloc
-        # First attempt to find an extact FQDN match
+        # First attempt to find an exact FQDN match
         for wikidata_code, org_parameters in self.wikidata_json.items():
             for official_website in org_parameters.get("officialWebsites", []):
                 official_website_domain = urlparse(official_website).netloc
@@ -63,7 +63,7 @@ class NSI(metaclass=Singleton):
                 official_website_domain = urlparse(official_website).netloc
                 if official_website_domain.lstrip("www.") == supplied_url_domain.lstrip("www."):
                     return wikidata_code
-        # Last attempt to find a fuzzy match for registered domain (exlcuding subdomains)
+        # Last attempt to find a fuzzy match for registered domain (excluding subdomains)
         for wikidata_code, org_parameters in self.wikidata_json.items():
             for official_website in org_parameters.get("officialWebsites", []):
                 official_website_reg = tldextract.extract(official_website).registered_domain
@@ -72,14 +72,25 @@ class NSI(metaclass=Singleton):
                     return wikidata_code
         return None
 
-    def lookup_wikidata(self, wikidata_code: str = None) -> dict:
+    def lookup_wikidata(self, wikidata_code: str = None, include_dissolved=False) -> dict | None:
         """
         Lookup wikidata code in the NSI.
         :param wikidata_code: wikidata code to lookup in the NSI
+        :param include_dissolved: whether or not to return brands marked in wikidata as dissolved
         :return: NSI wikidata.json entry if present
         """
         self._ensure_loaded()
-        return self.wikidata_json.get(wikidata_code)
+        wd_json = self.wikidata_json.get(wikidata_code)
+
+        if not wd_json:
+            return None
+
+        if include_dissolved:
+            return wd_json
+        elif "dissolutions" not in wd_json:
+            return wd_json
+
+        return None
 
     def iter_wikidata(self, label_to_find: str = None) -> Iterable[tuple[str, dict]]:
         """
