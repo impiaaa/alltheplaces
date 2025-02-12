@@ -1,4 +1,5 @@
 import datetime
+import re
 
 import scrapy
 
@@ -48,6 +49,7 @@ class NikeSpider(scrapy.Spider):
 
                 closing_h = closing.split("H")[0].replace("PT", "") if "H" in closing else "0"
                 closing_m = closing[len(closing) - 3 :].replace("M", "") if "M" in closing else "0"
+                closing_m = closing_m.replace("H", "")  # needed for 1 digit minutes
 
                 start = opening.split(":")
                 closing_time = str(
@@ -63,7 +65,10 @@ class NikeSpider(scrapy.Spider):
                 opening_hours.add_range(day[0:2].title(), opening, closing_time)
 
             item["opening_hours"] = opening_hours.as_opening_hours()
-            item["website"] = "https://www.nike.com/retail/s/" + store["slug"]
+            if re.match(r"^[A-Za-z0-9_-]+$", store["slug"]):
+                item["website"] = "https://www.nike.com/retail/s/" + store["slug"]
+            else:
+                item["website"] = None
             self.extract_image(item, store)
             item["extras"] = {"owner:type": store["facilityType"]}
             if store["businessConcept"] == "FACTORY":
