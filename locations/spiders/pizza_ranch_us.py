@@ -8,7 +8,7 @@ from locations.dict_parser import DictParser
 from locations.structured_data_spider import StructuredDataSpider
 
 
-class PizzaRanchSpider(CrawlSpider, StructuredDataSpider):
+class PizzaRanchUSSpider(CrawlSpider, StructuredDataSpider):
     name = "pizza_ranch_us"
     item_attributes = {"brand": "Pizza Ranch", "brand_wikidata": "Q7199978"}
     allowed_domains = ["pizzaranch.com"]
@@ -25,5 +25,4 @@ class PizzaRanchSpider(CrawlSpider, StructuredDataSpider):
                 yield Request(url=website, callback=self.parse_sd)
             else:
                 item = DictParser.parse(store)
-                item["website"] = "https://pizzaranch.com/"
                 yield item

@@ -13,6 +13,7 @@ class DictParser:
         "store-id",
         "StoreID",
         "storeID",
+        "storeId",
         "store-number",
         "shop-number",
         "location-id",
@@ -24,6 +25,13 @@ class DictParser:
         "item-id",
         "ItemID",
         "itemID",
+        "branch-id",
+        "BranchID",
+        "branchID",
+        "branch-code",
+        # ES
+        "id-tienda",
+        "ID-tienda",
     ]
 
     name_keys = [
@@ -36,6 +44,11 @@ class DictParser:
         "item-name",
         "location-name",
         "loc-name",
+        "branch-name",
+        # ES
+        "nombre",
+        # IT
+        "nome",
     ]
 
     house_number_keys = [
@@ -54,19 +67,32 @@ class DictParser:
         "store-address",
         "physical-address",
         "full-address",
+        "formattedAddress",
         # ES
         "direccion",  # "address"
+    ]
+
+    street_keys = [
+        # EN
+        "street",
+        "street-name",
+        # DE
+        "strasse",
     ]
 
     street_address_keys = [
         # EN
         "street-address",
         "address1",
+        "address-line",
         "address-line1",
         "line1",
         "address-line-one",
+        "address-street",
         # JP
         "町域以下住所",  # "address below town limits"
+        # IT
+        "indirizzo",
     ]
 
     city_keys = [
@@ -74,9 +100,11 @@ class DictParser:
         "address-locality",
         "city",
         "address-city",
+        "physical-city",
         "town",
         "locality",
         "suburb",
+        "physical-suburb",
         "city-name",
         "store-city",
         # JP
@@ -86,7 +114,10 @@ class DictParser:
         # ES
         "ciudad",  # "city"
         # IT
-        "comune",  # "comune"
+        "comune",  # "comune",
+        "citta",
+        # DE
+        "ort",  # location
     ]
 
     region_keys = [
@@ -100,6 +131,9 @@ class DictParser:
         "county",
         "state-name",
         "store-state",
+        "store-province",
+        "storeProvince",
+        "prefecture",
         # JP
         "都道府県",  # "prefecture"
         # IT
@@ -136,8 +170,14 @@ class DictParser:
         "store-zip",
         "store-zip-code",
         "store-zipcode",
+        "address-zip",
         # JP
         "郵便番号",  # "post code"
+        # DE
+        "plz",
+        "postleitzahl",
+        # IT
+        "cap",
     ]
 
     email_keys = [
@@ -155,6 +195,7 @@ class DictParser:
         "phone",
         "telephone",
         "tel",
+        "tel-no",
         "telephone-number",
         "telephone1",
         "contact-number",
@@ -162,7 +203,10 @@ class DictParser:
         "contact-phone",
         "store-phone",
         "primary-phone",
+        "primaryNumber",
         "main-phone",
+        "branch-phone",
+        "branch-telephone",
         # ES
         "telefono",  # "phone"
     ]
@@ -172,12 +216,16 @@ class DictParser:
         "latitude",
         "lat",
         "store-latitude",
+        "storeLatitude",
         "display-lat",
         "yext-display-lat",
         "map-latitude",
         "geo-lat",
+        "GPSLat",
+        "geographicCoordinatesLatitude",
         # ES
         "coordenaday",  # "Coordinate Y"
+        "latitud",
     ]
 
     lon_keys = [
@@ -187,12 +235,16 @@ class DictParser:
         "long",
         "lng",
         "store-longitude",
+        "storeLongitude",
         "display-lng",
         "yext-display-lng",
         "map-longitude",
         "geo-lng",
+        "GPSLong",
+        "geographicCoordinatesLongitude",
         # ES
         "coordenadax",  # "Coordinate X"
+        "longitud",
     ]
 
     website_keys = [
@@ -205,34 +257,70 @@ class DictParser:
         "website-url",
         "websiteURL",
         "location-url",
+        "web-address",
+        "WebSiteURL",
+    ]
+
+    hours_keys = [
+        "hours",
+        "opening-hours",
+        "open-hours",
+        "store-opening-hours",
+        "store-hours",
+        # IT
+        "orario",
+        "orari",
+    ]
+
+    twitter_keys = [
+        "twitter",
+        "twitter-link",
+        "twitter-url",
+    ]
+
+    facebook_keys = [
+        "facebook",
+        "facebook-link",
+        "facebook-url",
     ]
 
     @staticmethod
-    def parse(obj) -> Feature:
+    def parse(obj: dict) -> Feature:
         item = Feature()
 
         item["ref"] = DictParser.get_first_key(obj, DictParser.ref_keys)
         item["name"] = DictParser.get_first_key(obj, DictParser.name_keys)
 
-        location = DictParser.get_first_key(
-            obj,
-            [
-                "location",
-                "geo-location",
-                "geo",
-                "geo-point",
-                "geocoded-coordinate",
-                "coordinates",
-                "geo-position",
-                "position",
-                "display-coordinate",
-            ],
-        )
-        # If not a good location object then use the parent
-        if not location or not isinstance(location, dict):
-            location = obj
-        item["lat"] = DictParser.get_first_key(location, DictParser.lat_keys)
-        item["lon"] = DictParser.get_first_key(location, DictParser.lon_keys)
+        if (
+            obj.get("geometry")
+            and obj["geometry"].get("type")
+            in ["Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"]
+            and isinstance(obj["geometry"].get("coordinates"), list)
+        ):
+            item["geometry"] = obj["geometry"]
+        else:
+            location = DictParser.get_first_key(
+                obj,
+                [
+                    "location",
+                    "geo-location",
+                    "geo",
+                    "geo-point",
+                    "geocoded-coordinate",
+                    "coordinates",
+                    "coords",
+                    "geo-position",
+                    "position",
+                    "positions",
+                    "display-coordinate",
+                    "yextDisplayCoordinate",
+                ],
+            )
+            # If not a good location object then use the parent
+            if not location or not isinstance(location, dict):
+                location = obj
+            item["lat"] = DictParser.get_first_key(location, DictParser.lat_keys)
+            item["lon"] = DictParser.get_first_key(location, DictParser.lon_keys)
 
         address = DictParser.get_first_key(obj, DictParser.full_address_keys)
 
@@ -243,7 +331,7 @@ class DictParser:
             address = obj
 
         item["housenumber"] = DictParser.get_first_key(address, DictParser.house_number_keys)
-        item["street"] = DictParser.get_first_key(address, ["street", "street-name"])
+        item["street"] = DictParser.get_first_key(address, DictParser.street_keys)
         item["street_address"] = DictParser.get_first_key(address, DictParser.street_address_keys)
         item["city"] = DictParser.get_first_key(address, DictParser.city_keys)
         item["state"] = DictParser.get_first_key(address, DictParser.region_keys)
@@ -265,6 +353,8 @@ class DictParser:
         item["email"] = DictParser.get_first_key(contact, DictParser.email_keys)
         item["phone"] = DictParser.get_first_key(contact, DictParser.phone_keys)
         item["website"] = DictParser.get_first_key(contact, DictParser.website_keys)
+        item["twitter"] = DictParser.get_first_key(contact, DictParser.twitter_keys)
+        item["facebook"] = DictParser.get_first_key(contact, DictParser.facebook_keys)
 
         return item
 

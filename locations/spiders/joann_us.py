@@ -2,9 +2,9 @@ from locations.hours import DAYS, OpeningHours
 from locations.storefinders.where2getit import Where2GetItSpider
 
 
-class JOANNUSSpider(Where2GetItSpider):
+class JoannUSSpider(Where2GetItSpider):
     name = "joann_us"
-    item_attributes = {"brand": "JOANN", "brand_wikidata": "Q6203968"}
+    item_attributes = {"brand_wikidata": "Q6203968"}
     api_brand_name = "joann"
     api_key = "53EDE5D6-8FC1-11E6-9240-35EF0C516365"
 

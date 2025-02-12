@@ -1,8 +1,11 @@
+from typing import Iterable
+
 from scrapy import Spider
-from scrapy.http import JsonRequest
+from scrapy.http import JsonRequest, Response
 
 from locations.dict_parser import DictParser
 from locations.hours import DAYS, OpeningHours
+from locations.items import Feature
 from locations.pipelines.address_clean_up import clean_address
 
 # Documentation available at https://developers.woosmap.com/products/search-api/get-started/
@@ -15,17 +18,17 @@ from locations.pipelines.address_clean_up import clean_address
 
 class WoosmapSpider(Spider):
     dataset_attributes = {"source": "api", "api": "woosmap.com"}
-    key = ""
-    origin = ""
+    key: str = ""
+    origin: str = ""
 
-    def start_requests(self):
+    def start_requests(self) -> Iterable[JsonRequest]:
         yield JsonRequest(
             url=f"https://api.woosmap.com/stores?key={self.key}&stores_by_page=300&page=1",
             headers={"Origin": self.origin},
             meta={"referrer_policy": "no-referrer"},
         )
 
-    def parse(self, response, **kwargs):
+    def parse(self, response: Response) -> Iterable[Feature | JsonRequest]:
         if features := response.json()["features"]:
             for feature in features:
                 item = DictParser.parse(feature["properties"])
@@ -57,5 +60,5 @@ class WoosmapSpider(Spider):
                     meta={"referrer_policy": "no-referrer"},
                 )
 
-    def parse_item(self, item, feature, **kwargs):
+    def parse_item(self, item: Feature, feature: dict) -> Iterable[Feature]:
         yield item

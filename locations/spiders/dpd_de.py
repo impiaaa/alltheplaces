@@ -9,7 +9,7 @@ from locations.items import Feature
 from locations.searchable_points import open_searchable_points
 
 
-class DPDDESpider(scrapy.Spider):
+class DpdDESpider(scrapy.Spider):
     name = "dpd_de"
     item_attributes = {"brand": "DPD", "brand_wikidata": "Q541030"}
     start_urls = ["https://my.dpd.de/shopfinder.aspx"]
@@ -93,7 +93,7 @@ class DPDDESpider(scrapy.Spider):
             item["postcode"] = plz
             item["ref"] = lat + lng
             item["housenumber"] = housenumber
-            apply_category({"amenity": "post_office", "post_office": "post_partner"}, item)
+            apply_category({"post_office": "post_partner"}, item)
 
             formdata = {
                 "ctl00$ctl16": "ctl00$ContentPlaceHolder1$modShopFinder$ctl01|ctl00$ContentPlaceHolder1$modShopFinder$repShopList$ctl0"

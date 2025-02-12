@@ -5,7 +5,7 @@ from locations.dict_parser import DictParser
 from locations.hours import DAYS_BG, DAYS_CZ, DAYS_EN, DAYS_SK, OpeningHours, sanitise_day
 
 
-class BILLASpider(Spider):
+class BillaSpider(Spider):
     name = "billa"
     allowed_domains = ["www.billa.at", "www.billa.bg", "www.billa.sk", "www.billa.cz"]
     start_urls = [
@@ -47,5 +47,5 @@ class BILLASpider(Spider):
                 if day := sanitise_day(day_hours["dayOfWeek"].strip(":"), days):
                     item["opening_hours"].add_range(day, day_hours["times"][0], day_hours["times"][1])
             if "parking" in location and "spotCount" in location["parking"]:
-                item["extras"]["capacity:motorcar"] = location["parking"]["spotCount"]
+                item["extras"]["capacity:motorcar"] = str(location["parking"]["spotCount"])
             yield item
