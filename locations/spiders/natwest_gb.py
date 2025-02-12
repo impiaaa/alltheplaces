@@ -12,7 +12,7 @@ from locations.geo import postal_regions
 from locations.hours import OpeningHours
 
 
-class NatWestGBSpider(Spider):
+class NatwestGBSpider(Spider):
     name = "natwest_gb"
     item_attributes = {"brand": "NatWest", "brand_wikidata": "Q2740021"}
     total_pois = -1
@@ -39,7 +39,8 @@ class NatWestGBSpider(Spider):
         resp = response.json()["response"]
         self.total_pois = max([self.total_pois, resp["count"]])
         for location, dist in zip(resp["entities"], resp["distances"]):
-            location["location"] = location["displayCoordinate"]
+            if coordinates := location.get("displayCoordinate"):
+                location["location"] = coordinates
             item = DictParser.parse(location)
             item["ref"] = dist["id"]
             item["branch"] = location["geomodifier"]

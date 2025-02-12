@@ -9,7 +9,7 @@ from locations.user_agents import BROWSER_DEFAULT
 
 # On the date of writing (2023-12-20) the website blocks the spider with a captcha
 # after ~150 requests with current settings, so we are not getting all POIs.
-class WalmartCaSpider(scrapy.Spider):
+class WalmartCASpider(scrapy.Spider):
     name = "walmart_ca"
     allowed_domains = ["www.walmart.ca"]
     item_attributes = {"brand": "Walmart", "brand_wikidata": "Q483551"}
@@ -37,8 +37,6 @@ class WalmartCaSpider(scrapy.Spider):
                 self.crawler.stats.inc_value("atp/poi/closed")
                 continue
 
-            poi.update(poi.pop("address"))
-            poi.update(poi.pop("geoPoint"))
             item = DictParser.parse(poi)
 
             item["opening_hours"] = self.parse_hours(poi.get("regularHours"))
@@ -56,7 +54,7 @@ class WalmartCaSpider(scrapy.Spider):
             oh = OpeningHours()
             for hour in hours:
                 oh.add_range(hour.get("day"), hour.get("start"), hour.get("end"))
-            return oh.as_opening_hours()
+            return oh
         except Exception as e:
             self.logger.error(f"Failed to parse hours: {hours}, {e}")
             return None

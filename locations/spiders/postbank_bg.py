@@ -3,17 +3,18 @@ import re
 import scrapy
 from scrapy.http import FormRequest
 
-from locations.categories import Categories, apply_category, apply_yes_no
+from locations.categories import Categories, Extras, apply_category, apply_yes_no
 from locations.hours import DAYS_BG, OpeningHours, day_range, sanitise_day
 from locations.items import Feature
 
 
 class PostbankBGSpider(scrapy.Spider):
     name = "postbank_bg"
-    item_attributes = {"brand": "Postbank", "brand_wikidata": "Q7234083", "country": "BG"}
+    item_attributes = {"brand": "Пощенска банка", "brand_wikidata": "Q7234083", "country": "BG"}
     allowed_domains = ["www.postbank.bg"]
     start_urls = ["https://www.postbank.bg/bg-BG/api/locations/locations"]
     no_refs = True
+    requires_proxy = True
 
     def start_requests(self):
         return [
@@ -56,7 +57,7 @@ class PostbankBGSpider(scrapy.Spider):
 
                 if location["isATM"]:
                     apply_category(Categories.ATM, item)
-                    apply_yes_no("deposit", item, location["isATMWithDeposit"])
+                    apply_yes_no(Extras.CASH_IN, item, location["isATMWithDeposit"])
                 elif location["isBranch"]:
                     apply_category(Categories.BANK, item)
                     apply_yes_no("self_service", item, location["isSelfServiceZone"])
