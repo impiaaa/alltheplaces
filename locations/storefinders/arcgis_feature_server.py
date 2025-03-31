@@ -68,6 +68,8 @@ class ArcGISFeatureServerSpider(Spider):
     layer_id: str = ""
     field_names: list[str] = []
     where_query: str = "1=1"
+    max_record_count: int | None = None
+    extra_parameters: str | None = None
 
     # robots.txt does not exist and instead returns a HTTP 404 page which
     # triggers a number of Scrapy warning messages.
@@ -130,12 +132,17 @@ class ArcGISFeatureServerSpider(Spider):
             output_fields = ",".join(output_field_names)
 
         max_record_count_fields = ""
-        if max_record_count := layer_details["maxRecordCount"]:
+        max_record_count = layer_details["maxRecordCount"]
+        if self.max_record_count is not None:
+            max_record_count = self.max_record_count
+        if max_record_count is not None:
             max_record_count_fields = f"&resultOffset=0&resultRecordCount={max_record_count}"
 
         where_query_urlencoded = quote_plus(self.where_query)
 
         query_url = f"https://{self.host}/{self.context_path}/rest/services/{self.service_id}/{self.server_type}/{self.layer_id}/query?where={where_query_urlencoded}&outFields={output_fields}&outSR=4326{max_record_count_fields}&f=geojson"
+        if self.extra_parameters is not None:
+            query_url += "&" + self.extra_parameters
         yield JsonRequest(url=query_url, callback=self.parse_features)
 
     def parse_features(self, response: Response) -> Iterable[Feature]:

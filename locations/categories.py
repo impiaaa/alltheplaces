@@ -415,6 +415,7 @@ def apply_category(category, item: Feature):
 top_level_tags = [
     "aeroway",
     "amenity",
+    "boundary",
     "cemetery",
     "club",
     "craft",
