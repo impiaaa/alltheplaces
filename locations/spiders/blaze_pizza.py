@@ -1,10 +1,16 @@
-from scrapy.spiders import SitemapSpider
-
-from locations.structured_data_spider import StructuredDataSpider
+from locations.storefinders.nomnom import NomNomSpider, slugify
 
 
-class BlazePizzaSpider(SitemapSpider, StructuredDataSpider):
+class BlazePizzaSpider(NomNomSpider):
     name = "blaze_pizza"
     item_attributes = {"brand": "Blaze Pizza", "brand_wikidata": "Q23016666"}
-    sitemap_urls = ["https://locations.blazepizza.com/sitemap.xml"]
-    sitemap_rules = [(r"https://locations.blazepizza.com/[^/]+/[^/]+/[a-zA-z0-9-]+", "parse_sd")]
+    domain = "blazepizza.com"
+
+    def post_process_item(self, item, response, feature):
+        item["extras"]["website:menu"] = feature["url"]
+        street_address = feature["streetaddress"]
+        street_address_no_unit = street_address[: street_address.find(",")] if "," in street_address else street_address
+        item["website"] = (
+            f"https://locations.blazepizza.com/{slugify(feature['state'])}/{slugify(feature['city'])}/{slugify(street_address_no_unit)}"
+        )
+        yield item
