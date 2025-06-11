@@ -1,30 +1,52 @@
+import base64
+import hashlib
+import hmac
+import time
+import uuid
+from typing import Any
+
 import scrapy
-from scrapy.http import JsonRequest
+from scrapy.http import JsonRequest, Response
 
 from locations.categories import Categories, apply_category
 from locations.hours import DAYS, OpeningHours
 from locations.items import Feature
 from locations.pipelines.address_clean_up import clean_address
+from locations.user_agents import BROWSER_DEFAULT
 
 
 class PizzaHutVNSpider(scrapy.Spider):
     name = "pizza_hut_vn"
     item_attributes = {"brand": "Pizza Hut", "brand_wikidata": "Q191615"}
+    api_url = "https://rwapi.pizzahut.vn/api/store/GetAllStoreList"
+    user_agent = BROWSER_DEFAULT
 
     def start_requests(self):
-        # Token is generated using a timestamp and other parameters, but the timestamp-token pair remains consistent.
-        # Skipping complex JavaScript token generation implementation.
+        timestamp = int(time.time() * 1000)
+        device_uid = uuid.uuid4()
+
+        auth_data = {"app_code": "REDWEB_DI1rpn3vHlyp", "access_key": "9GQ3cVW5Vqq4", "secret_key": "1YWkf7Rh0oJB"}
+
+        query_string = f"TimeStamp={timestamp}&DeviceUID={device_uid}&AppCode={auth_data['app_code']}&AccessKey={auth_data['access_key']}&Method=GET&url=/STORE/GETALLSTORELIST&Body="
+
+        key = base64.b64decode(auth_data["secret_key"])
+        message = query_string.encode("utf-8")
+        signature = hmac.new(key, message, hashlib.sha512)
+
+        access_token = base64.b64encode(signature.digest()).decode("utf-8")
+
         yield JsonRequest(
-            url="https://rwapi.pizzahut.vn/api/store/GetAllStoreList",
+            url=self.api_url,
             headers={
-                "Authorization": "Bearer 5EGv68487qV+zXxlX73CFsL8L8PPBmzKEoI9AzHvrvVm95T4KpV/Ggu9zyruZvkHLFwc69R+tqoOnP5epRXRWQ==",
-                "deviceuid": "47dcdf29-8d34-4beb-ac1f-8b91537cea35",
+                "Authorization": f"Bearer {access_token}",
+                "deviceuid": str(device_uid),
                 "project_id": "WEB",
-                "timestamp": "1739260740720",
+                "timestamp": str(timestamp),
             },
+            callback=self.parse_stores,
         )
 
-    def parse(self, response, **kwargs):
+    def parse_stores(self, response: Response, **kwargs: Any) -> Any:
         for store in response.json()["PZH_StoreList"]["StoreList"]:
             item = Feature()
             item["ref"] = store.get("store_code")
