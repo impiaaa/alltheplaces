@@ -11,7 +11,7 @@ class ForestServiceUSSpider(ArcGISFeatureServerSpider):
     download_timeout = 30
     host = "apps.fs.usda.gov"
     context_path = "fsgisx05"
-    service_id = "wo_nfs_gtac/GTAC_IVMQuery_01"
+    service_id = "wo_nfs_gtac/IVMQuery"
     server_type = "MapServer"
     layer_id = "4"
     max_record_count = 9
@@ -20,6 +20,6 @@ class ForestServiceUSSpider(ArcGISFeatureServerSpider):
     def post_process_item(self, item, response, location):
         apply_category({"boundary": "protected_area"}, item)
         del item["state"]
-        item["ref"] = location["OBJECTID"]
-        item["name"] = location["COMMONNAME"]
+        item["ref"] = location["objectid"]
+        item["name"] = location["commonname"]
         yield item
