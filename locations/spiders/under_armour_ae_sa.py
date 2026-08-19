@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncIterator
 
 from scrapy import Spider
 from scrapy.http import JsonRequest, Response
@@ -16,7 +16,7 @@ class UnderArmourAESASpider(Spider):
     }
     allowed_domains = ["underarmour.ae", "underarmour.sa"]
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         urls = [
             # UAE stores
             "https://www.underarmour.ae/on/demandware.store/Sites-UnderArmour_AE-Site/en_AE/Stores-FindStores?showMap=true&selectedCountry=AE&city=all",
@@ -55,7 +55,7 @@ class UnderArmourAESASpider(Spider):
                     end = day_data.get("end")
                     if day and start and end:
                         oh.add_range(day, start, end)
-                item["opening_hours"] = oh.as_opening_hours()
+                item["opening_hours"] = oh
 
             apply_category(Categories.SHOP_CLOTHES, item)
 

@@ -1,7 +1,7 @@
-from typing import Any, Iterable
+from typing import Any, AsyncIterator
 
-from scrapy import FormRequest, Request, Spider
-from scrapy.http import Response
+from scrapy import Spider
+from scrapy.http import FormRequest, Response
 
 from locations.dict_parser import DictParser
 
@@ -16,7 +16,7 @@ class SupermacsGBIESpider(Spider):
         "supermacs.ie",
     ]
 
-    def start_requests(self) -> Iterable[Request]:
+    async def start(self) -> AsyncIterator[FormRequest]:
         yield FormRequest(
             "https://supermacs.ie/wp-admin/admin-ajax.php",
             formdata={"action": "get_markers"},
@@ -26,8 +26,10 @@ class SupermacsGBIESpider(Spider):
         for location in response.json()["markers"]:
             item = DictParser().parse(location)
             item["website"] = location["store_link"]
-            if location["store_front_image"]:
-                item["image"] = location["store_front_image"]["url"]
+            if url := (location["store_front_image"] or {}).get("url"):
+                # Filter the generic fallback image that appears on most stores
+                if "Image-1.jpeg" not in url:
+                    item["image"] = url
             item["phone"] = location["store_telephone"]
             item["addr_full"] = item["addr_full"].replace("<br />", "")
             item["ref"] = item["website"]

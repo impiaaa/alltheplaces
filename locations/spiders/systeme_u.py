@@ -53,13 +53,13 @@ class SystemeUSpider(SitemapSpider):
                     time_format="%H:%M",
                 )
 
-        return opening_hours.as_opening_hours()
+        return opening_hours
 
     def parse_stores(self, response):
         properties = {
             "ref": response.url,
             "name": response.xpath('//div[@class="info-magasin-station"]/h1[@class="h1"]/text()').extract_first(),
-            "addr_full": response.xpath(
+            "street_address": response.xpath(
                 'normalize-space(//div[@class="address b-md b-md--sm"]/p[1]/text())'
             ).extract_first(),
             "city": response.xpath(
@@ -75,23 +75,20 @@ class SystemeUSpider(SitemapSpider):
             "website": response.url,
         }
 
-        if m := re.search(r"/(magasin|station)/(uexpress|superu|marcheu|hyperu)-\w+", response.url):
+        if m := re.search(r"/(magasin|station)/(uexpress|superu|marcheu|marcheru|hyperu)-\w+", response.url):
             if m.group(1) == "magasin":
                 apply_category(Categories.SHOP_SUPERMARKET, properties)
                 hours_xpath = '//div[@id="magasin-tab"]//div[@class="u-horaire"]//tr[@class="u-horaire__line-day"]'
             else:
                 apply_category(Categories.FUEL_STATION, properties)
                 hours_xpath = '//div[@class="u-station__magasin"]/p[2]/text()'
-
-            properties.update(self.brands[m.group(2)])
+            category_name = m.group(2)
+            if category_name == "marcheru":
+                category_name = "marcheu"
+            properties.update(self.brands[category_name])
 
         try:
-            hours = response.xpath(hours_xpath)
-            h = self.parse_hours(hours)
-
-            if h:
-                properties["opening_hours"] = h
+            properties["opening_hours"] = self.parse_hours(response.xpath(hours_xpath))
         except:
             pass
-
         yield Feature(**properties)

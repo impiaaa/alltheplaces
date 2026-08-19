@@ -1,21 +1,23 @@
-import scrapy
-from scrapy import Selector
+from typing import AsyncIterator
+
+from scrapy import Selector, Spider
+from scrapy.http import Request
 
 from locations.categories import Categories, Extras, apply_category, apply_yes_no
-from locations.hours import DAYS_BG, OpeningHours, day_range, sanitise_day
+from locations.hours import DAYS_BG, OpeningHours
 from locations.items import Feature
 from locations.user_agents import BROWSER_DEFAULT
 
 
-class FibankBGSpider(scrapy.Spider):
+class FibankBGSpider(Spider):
     name = "fibank_bg"
     item_attributes = {"brand": "Fibank", "brand_wikidata": "Q3367065"}
     custom_settings = {"ROBOTSTXT_OBEY": False}
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[Request]:
         url = "https://www.fibank.bg/bg/branch_network_xhr?method=get_locations"
         headers = {"x-requested-with": "XMLHttpRequest", "User-Agent": BROWSER_DEFAULT}
-        yield scrapy.Request(url=url, headers=headers, callback=self.parse)
+        yield Request(url=url, headers=headers, callback=self.parse)
 
     def parse(self, response):
         cities = response.json()
@@ -37,12 +39,9 @@ class FibankBGSpider(scrapy.Spider):
                     worktime = textResponse.xpath("//div[contains(@class, 'worktime')]/text()").get()
                     isUnparsable = "зимен" in worktime or "и " in worktime or "събота" in worktime or ", " in worktime
                     if worktime is not None and not isUnparsable:
-                        days, hours = worktime.replace("ч", "").replace(" ", "").replace(".", "").split(":", 1)
-                        days = days.split("-")
-                        days = [sanitise_day(days[0], DAYS_BG), sanitise_day(days[1], DAYS_BG)]
-                        hours = hours.split("-")
                         item["opening_hours"] = OpeningHours()
-                        item["opening_hours"].add_days_range(day_range(days[0], days[1]), hours[0], hours[1])
+                        worktime = worktime.replace("ч.", "")
+                        item["opening_hours"].add_ranges_from_string(worktime, days=DAYS_BG)
                 else:
                     apply_category(Categories.ATM, item)
                     apply_yes_no("authentication:contactless", item, "atm_filter_contactless" in location["features"])

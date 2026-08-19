@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import AsyncIterator
 
 from scrapy import Spider
 from scrapy.http import JsonRequest
@@ -15,7 +16,7 @@ class StarbucksARCLSpider(Spider):
     name = "starbucks_ar_cl"
     item_attributes = STARBUCKS_SHARED_ATTRIBUTES
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         for country, base_url, min_population in [
             ("AR", "https://www.starbucks.com.ar", 100000),
             ("CL", "https://www.starbucks.cl", 15000),
@@ -41,7 +42,7 @@ class StarbucksARCLSpider(Spider):
                 day = datetime.strptime(rule.get("date").split(".")[0], "%Y-%m-%dT%H:%M:%S").weekday()
                 if rule.get("openTime") and rule.get("closeTime"):
                     oh.add_range(DAYS[day], rule["openTime"], rule["closeTime"], "%H:%M:%S")
-            item["opening_hours"] = oh.as_opening_hours()
+            item["opening_hours"] = oh
             item["website"] = response.url.replace("/api/getStores", "/stores")
 
             if services := store.get("features", {}).get("feature"):

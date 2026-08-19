@@ -1,20 +1,30 @@
+import scrapy
 from scrapy.http import Response
-from scrapy.spiders import SitemapSpider
 
-from locations.categories import Categories, apply_category
+from locations.categories import Categories, Extras, apply_category, apply_yes_no
 from locations.items import Feature
-from locations.structured_data_spider import StructuredDataSpider
 
 
-class IndependentFinancialUSSpider(SitemapSpider, StructuredDataSpider):
+class IndependentFinancialUSSpider(scrapy.Spider):
     name = "independent_financial_us"
-    item_attributes = {"brand": "Independent Financial", "brand_wikidata": "Q6016398"}
-    sitemap_urls = ["https://locations.ifinancial.com/sitemap.xml"]
-    sitemap_rules = [(r"https://locations.ifinancial.com/\w+/[a-z-0-9]+/[a-z-0-9]+", "parse_sd")]
+    item_attributes = {"brand": "Independent Bank", "brand_wikidata": "Q6016398"}
+    start_urls = ["https://www.independentbank.com/find-a-location/"]
 
-    def post_process_item(self, item: Feature, response: Response, ld_data: dict, **kwargs):
-        if "/atm" in response.url:
-            apply_category(Categories.ATM, item)
-        else:
+    def parse(self, response: Response, **kwargs):
+        for location in response.xpath('//*[@class="locations-listings"]//article'):
+            item = Feature()
+            item["branch"] = location.xpath(".//@aria-label").get()
+            item["name"] = self.item_attributes["brand"]
+            item["ref"] = location.xpath(".//@id").get()
+            item["lat"] = location.xpath(".//@data-lat").get()
+            item["lon"] = location.xpath(".//@data-lng").get()
+            item["addr_full"] = location.xpath(".//@data-address").get()
+            item["website"] = response.urljoin(location.xpath(".//@data-url").get())
+            location_type = location.xpath('.//div[@class="location-item-services-list"]/text()').get().split()
+
             apply_category(Categories.BANK, item)
-        yield item
+
+            apply_yes_no(Extras.ATM, item, "UseanATM" in location_type)
+            apply_yes_no(Extras.DRIVE_THROUGH, item, "UsetheDriveThru" in location_type)
+
+            yield item

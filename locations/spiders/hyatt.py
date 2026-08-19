@@ -1,11 +1,13 @@
-import json
+from json import loads
+from typing import AsyncIterator
 
-import scrapy
+from scrapy import Request, Spider
 
+from locations.categories import Categories, apply_category
 from locations.items import Feature
 
 
-class HyattSpider(scrapy.Spider):
+class HyattSpider(Spider):
     name = "hyatt"
     item_attributes = {"brand": "Hyatt", "brand_wikidata": "Q1425063"}
     allowed_domains = ["hyatt.com"]
@@ -22,12 +24,12 @@ class HyattSpider(scrapy.Spider):
         "6-Australia",
     )
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[Request]:
         for region in self.regions:
-            yield scrapy.Request(url=self.base_url.format(region=region))
+            yield Request(url=self.base_url.format(region=region))
 
     def parse_hotel(self, response):
-        data = json.loads(response.xpath('//script[contains(text(), "streetAddress")]/text()').extract_first())
+        data = loads(response.xpath('//script[contains(text(), "streetAddress")]/text()').extract_first())
 
         properties = {
             "ref": "_".join(response.url.split("/")[-3:]),
@@ -43,13 +45,15 @@ class HyattSpider(scrapy.Spider):
             "website": response.url,
         }
 
-        yield Feature(**properties)
+        item = Feature(**properties)
+        apply_category(Categories.HOTEL, item)
+        yield item
 
     def parse(self, response):
         urls = response.xpath('//li[contains(@class, "property")]/a/@href').extract()
 
         for url in urls:
-            yield scrapy.Request(
+            yield Request(
                 response.urljoin(url),
                 headers={"Referer": None},
                 callback=self.parse_hotel,

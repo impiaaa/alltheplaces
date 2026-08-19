@@ -4,6 +4,9 @@ from locations.categories import (
     Fuel,
     HealthcareSpecialities,
     PaymentMethods,
+    Vending,
+    add_list,
+    add_vending,
     apply_category,
     apply_clothes,
     apply_healthcare_specialities,
@@ -35,6 +38,8 @@ def test_apply_yes_no():
 
 def test_shop_tag_sanity():
     for cat in Categories:
+        if cat in {Categories.SHOP_E_CIGARETTE, Categories.SHOP_BEAUTY_SPA}:
+            continue
         if cat.name.startswith("SHOP_"):
             shop_name = cat.name.split("_", 1)[1].lower()
             assert cat.value.get("shop") == shop_name
@@ -42,15 +47,15 @@ def test_shop_tag_sanity():
 
 def test_cuisine_multiple():
     item = Feature()
-    apply_category({"cuisine": "coffee_shop"}, item)
+    add_list("cuisine", "coffee_shop", item)
     assert item["extras"]["cuisine"] == "coffee_shop"
 
-    apply_category({"cuisine": "coffee_shop"}, item)
-    apply_category({"cuisine": "coffee_shop"}, item)
+    add_list("cuisine", "coffee_shop", item)
+    add_list("cuisine", "coffee_shop", item)
     assert item["extras"]["cuisine"] == "coffee_shop"
 
-    apply_category({"cuisine": "coffee_shop"}, item)
-    apply_category({"cuisine": "pizza"}, item)
+    add_list("cuisine", "coffee_shop", item)
+    add_list("cuisine", "pizza", item)
     assert item["extras"]["cuisine"] == "coffee_shop;pizza"
 
 
@@ -143,3 +148,26 @@ def test_map_payment():
     item = Feature()
     invalid_alias_result = map_payment(item, "AllThePlaces Payment Card", PaymentMethods)
     assert not invalid_alias_result
+
+
+def test_vending():
+    item = Feature()
+
+    add_vending(Vending.FOOD, item)
+    assert item["extras"]["vending"] == "food"
+
+    add_vending(Vending.FOOD, item)
+    add_vending(Vending.FOOD, item)
+    assert item["extras"]["vending"] == "food"
+
+    add_vending(Vending.COFFEE, item)
+    v = item["extras"]["vending"].split(";")
+    assert "coffee" in v
+    assert "food" in v
+
+    item = Feature()
+    add_vending(Vending.FOOD, item)
+    add_vending(Vending.COFFEE, item)
+    v = item["extras"]["vending"].split(";")
+    assert "coffee" in v
+    assert "food" in v

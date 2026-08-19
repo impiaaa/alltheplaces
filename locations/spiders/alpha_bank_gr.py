@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 from scrapy import Request, Spider
 
 from locations.categories import Categories, apply_category
@@ -9,8 +11,8 @@ class AlphaBankGRSpider(Spider):
     name = "alpha_bank_gr"
     item_attributes = {"brand": "Alpha Bank", "brand_wikidata": "Q747394"}
 
-    def start_requests(self):
-        yield Request(url="https://www.alpha.gr/api/maps/MapLocations?bringPrivates=False&httproute=True")
+    async def start(self) -> AsyncIterator[Request]:
+        yield Request(url="https://www.alpha.gr/api/maps/MapLocations?bringPrivates=False&httproute=True&lang=el")
 
     def parse(self, response):
         data = response.json()
@@ -45,7 +47,7 @@ class AlphaBankGRSpider(Spider):
                 oh = OpeningHours()
                 days = day_range(DAYS_GR[hours[0].capitalize()], DAYS_GR[hours[2].capitalize()])
                 oh.add_days_range(days, hours[3].split("-")[0], hours[3].split("-")[1])
-                item["opening_hours"] = oh.as_opening_hours()
+                item["opening_hours"] = oh
             except Exception:
                 pass
 

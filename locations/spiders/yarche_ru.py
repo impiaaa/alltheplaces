@@ -1,29 +1,37 @@
-import scrapy
+from typing import Any
 
+import scrapy
+from scrapy import Spider
+from scrapy.http import Response
+
+from locations.categories import Categories, apply_category
 from locations.items import Feature
 
 
-class YarcheRUSpider(scrapy.Spider):
+class YarcheRUSpider(Spider):
     name = "yarche_ru"
     allowed_domains = ["xn--e1avv4a.xn--p1ai"]
     item_attributes = {"brand": "Ярче!", "brand_wikidata": "Q102254456"}
     start_urls = ["https://xn--e1avv4a.xn--p1ai/"]
-    custom_settings = {
-        "ROBOTSTXT_OBEY": False,
-    }
+    custom_settings = {"ROBOTSTXT_OBEY": False}
 
-    def parse(self, response):
+    def parse(self, response: Response, **kwargs: Any) -> Any:
         for region_id in response.xpath('//select[@id="current_region"]/option/@value').getall():
             yield scrapy.Request(f"https://xn--e1avv4a.xn--p1ai/shops/?region={region_id}", callback=self.parse_pois)
 
-    def parse_pois(self, response):
+    def parse_pois(self, response: Response, **kwargs: Any) -> Any:
         for poi in response.xpath('//a[@class="shop_address"]'):
             item = Feature()
             item["ref"] = poi.xpath("./@data-id").get()
             item["street_address"] = poi.xpath("./text()").get(default="").strip()
             if coords := poi.xpath("./@data-coords").get():
                 try:
-                    item["lat"], item["lon"] = [c.strip() for c in coords.split(",")]
+                    location = coords.split(",")
+                    if len(location) == 2:
+                        item["lat"], item["lon"] = [c.strip() for c in location]
                 except ValueError as e:
                     self.logger.error(f"Failed to parse coords {coords}: {e}")
+
+            apply_category(Categories.SHOP_SUPERMARKET, item)
+
             yield item

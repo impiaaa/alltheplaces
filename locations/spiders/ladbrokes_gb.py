@@ -23,10 +23,9 @@ class LadbrokesGBSpider(Spider):
                 # item["name"] = store["n"]
                 item["lat"] = store["lat"]
                 item["lon"] = store["lng"]
-                item["website"] = store["w"]
                 item["ref"] = store["bpid"]
                 item["addr_full"] = store["ad"]
-                item["postcode"] = store["pc"]
+                item["postcode"] = store.get("pc")
                 item["phone"] = store["p"]
                 if store["c"] == "ROI":
                     item["country"] = "IE"

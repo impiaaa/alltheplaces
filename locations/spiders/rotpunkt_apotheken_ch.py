@@ -1,6 +1,7 @@
 import re
 
-import scrapy
+from scrapy.linkextractors import LinkExtractor
+from scrapy.spiders import CrawlSpider, Rule
 
 from locations.categories import Categories, Extras, apply_category, apply_yes_no
 from locations.hours import DAYS_DE, OpeningHours
@@ -9,10 +10,14 @@ from locations.items import Feature
 
 # Technically, the site uses linked data, but in reality that contains only
 # boilerplate. Anything interesting needs to be extracted from HTML.
-class RotpunktApothekenCHSpider(scrapy.spiders.SitemapSpider):
+class RotpunktApothekenCHSpider(CrawlSpider):
     name = "rotpunkt_apotheken_ch"
     allowed_domains = ["www.rotpunkt-apotheken.ch"]
-    sitemap_urls = ["https://www.rotpunkt-apotheken.ch/sitemaps-1-section-pharmaciesDetailPages-1-sitemap.xml"]
+
+    start_urls = ["https://www.rotpunkt-apotheken.ch/apotheken"]
+    rules = [
+        Rule(LinkExtractor(allow=r"/apotheken/[-\w]+$"), callback="parse"),
+    ]
 
     def parse(self, response):
         props = {
@@ -75,7 +80,7 @@ class RotpunktApothekenCHSpider(scrapy.spiders.SitemapSpider):
             day = DAYS_DE.get(t.strip(), day)
             for open_h, close_h in re.findall(r"(\d\d:\d\d) – (\d\d:\d\d)", t):
                 oh.add_range(day, open_h, close_h)
-        return oh.as_opening_hours()
+        return oh
 
     def parse_phone(self, response):
         if match := re.search(r'"tel:([\d\s]+)"', response.text):

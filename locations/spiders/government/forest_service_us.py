@@ -15,7 +15,7 @@ class ForestServiceUSSpider(ArcGISFeatureServerSpider):
     server_type = "MapServer"
     layer_id = "4"
     max_record_count = 9
-    extra_parameters = "geometryPrecision=4"
+    additional_parameters = {"geometryPrecision": "4"}
 
     def post_process_item(self, item, response, location):
         apply_category({"boundary": "protected_area"}, item)

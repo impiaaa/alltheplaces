@@ -7,14 +7,22 @@ from locations.categories import Categories, Extras, apply_category, apply_yes_n
 from locations.dict_parser import DictParser
 from locations.hours import OpeningHours
 from locations.items import Feature
+from locations.settings import DEFAULT_PLAYWRIGHT_SETTINGS
 from locations.spiders.mcdonalds import McdonaldsSpider
+from locations.user_agents import BROWSER_DEFAULT
 
 
 class McdonaldsPHSpider(scrapy.Spider):
     name = "mcdonalds_ph"
     item_attributes = McdonaldsSpider.item_attributes
     start_urls = ["https://www.mcdonalds.com.ph/store-locator"]
-    custom_settings = {"DOWNLOAD_TIMEOUT": 120}
+    is_playwright_spider = True
+    custom_settings = DEFAULT_PLAYWRIGHT_SETTINGS | {
+        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 180 * 1000,
+        "DOWNLOAD_DELAY": 10,
+        "RETRY_TIMES": 10,
+        "USER_AGENT": BROWSER_DEFAULT,
+    }
 
     def parse(self, response: XmlResponse, **kwargs):
         for location in json.loads(response.xpath("//store-locator").attrib[":stores"]):
@@ -40,7 +48,7 @@ class McdonaldsPHSpider(scrapy.Spider):
                 if "Open 24 hours" in hours:
                     hours = "00:00-24:00"
                 oh.add_ranges_from_string("Mo-Su" + " " + hours)
-                item["opening_hours"] = oh.as_opening_hours()
+                item["opening_hours"] = oh
         except Exception as e:
             self.logger.warning(f"Failed to parse hours: {e}")
             self.crawler.stats.inc_value(f"atp/{self.name}/hours/failed")

@@ -3,15 +3,19 @@ from urllib.parse import urlparse
 from scrapy.http import Response
 from scrapy.spiders import SitemapSpider
 
+from locations.categories import Categories, apply_category
 from locations.items import Feature
 from locations.structured_data_spider import StructuredDataSpider
 
 
 class MichaelKorsSpider(SitemapSpider, StructuredDataSpider):
     name = "michael_kors"
-    item_attributes = {"brand": "Michael Kors", "brand_wikidata": "Q19572998"}
-    sitemap_urls = ["https://locations.michaelkors.com/sitemap.xml"]
-    sitemap_rules = [(r"^https://locations.michaelkors.com/[\w-]+(?:/[\w-]+)?/[\w-]+/[\w-]+$", "parse_sd")]
+    item_attributes = {"brand": "Michael Kors", "brand_wikidata": "Q134612138"}
+    sitemap_urls = ["https://locations.michaelkors.com/sitemap.xml", "https://locations.michaelkors.co.uk/sitemap.xml"]
+    sitemap_rules = [
+        (r"^https://locations.michaelkors.com/[\w-]+(?:/[\w-]+)?/[\w-]+/[\w-]+$", "parse_sd"),
+        (r"^https://locations.michaelkors.co.uk/[\w-]+/[^/]+$", "parse_sd"),
+    ]
     search_for_twitter = False
     search_for_fimage = False
     drop_attributes = {"facebook"}
@@ -29,5 +33,5 @@ class MichaelKorsSpider(SitemapSpider, StructuredDataSpider):
             item["name"] = "Michael Kors Outlet"
         else:
             item["branch"] = item.pop("name").removeprefix("Michael Kors ")
-
+        apply_category(Categories.SHOP_CLOTHES, item)
         yield item

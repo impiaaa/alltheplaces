@@ -13,15 +13,15 @@ class SchlotzskysSpider(scrapy.Spider):
     def parse_hours(self, hours):
         oh = OpeningHours()
         for h in hours:
-            (dow, times) = h.split(" ")
+            dow, times = h.split(" ")
 
             if times == "Closed":
                 continue
 
-            (open_time, close_time) = times.split("-")
+            open_time, close_time = times.split("-")
 
             oh.add_range(dow, open_time, close_time)
-        return oh.as_opening_hours()
+        return oh
 
     def parse(self, response):
         links = response.xpath('//a[@class="Directory-listLink"]')

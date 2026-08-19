@@ -1,24 +1,26 @@
-import scrapy
-from scrapy.http import JsonRequest
+from typing import AsyncIterator, Iterable
+
+from scrapy import Spider
+from scrapy.http import JsonRequest, TextResponse
 
 from locations.categories import Extras, apply_yes_no
 from locations.dict_parser import DictParser
 from locations.hours import OpeningHours
+from locations.items import Feature
 from locations.pipelines.address_clean_up import clean_address
 from locations.spiders.kfc_us import KFC_SHARED_ATTRIBUTES
 from locations.user_agents import BROWSER_DEFAULT
 
 
-class KfcAUSpider(scrapy.Spider):
+class KfcAUSpider(Spider):
     name = "kfc_au"
     item_attributes = KFC_SHARED_ATTRIBUTES
     region_code = "apac"
     tenant_id = "afd3813afa364270bfd33f0a8d77252d"
     web_root = "https://www.kfc.com.au/restaurants/"
-    requires_proxy = True  # Requires AU proxy, possibly residential IPs only.
     custom_settings = {"USER_AGENT": BROWSER_DEFAULT}
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         yield JsonRequest(
             url="https://orderserv-kfc-" + self.region_code + "-olo-api.yum.com/dev/v1/stores/",
             headers={"x-tenant-id": self.tenant_id},
@@ -67,4 +69,8 @@ class KfcAUSpider(scrapy.Spider):
                 trading_day["availableHours"]["endTime"],
                 "%H%M",
             )
+        yield from self.post_process_item(item, response) or []
+
+    def post_process_item(self, item: Feature, response: TextResponse) -> Iterable[Feature]:
+        """Override with any post processing on the item"""
         yield item
