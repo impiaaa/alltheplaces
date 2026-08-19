@@ -5,8 +5,9 @@
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Iterable
+from typing import Any, Iterable
 
+import pycountry
 import scrapy
 
 from locations.hours import OpeningHours
@@ -21,6 +22,7 @@ class Feature(scrapy.Item):
     name = scrapy.Field()
     branch = scrapy.Field()
     addr_full = scrapy.Field()
+    unit = scrapy.Field()
     housenumber = scrapy.Field()
     street = scrapy.Field()
     street_address = scrapy.Field()
@@ -40,6 +42,8 @@ class Feature(scrapy.Item):
     brand_wikidata = scrapy.Field()
     operator = scrapy.Field()
     operator_wikidata = scrapy.Field()
+    network = scrapy.Field()
+    network_wikidata = scrapy.Field()
     located_in = scrapy.Field()
     located_in_wikidata = scrapy.Field()
     nsi_id = scrapy.Field()
@@ -50,34 +54,115 @@ class Feature(scrapy.Item):
         if not self._values.get("extras"):
             self.__setitem__("extras", {})
 
+    def set_tag(self, key: str, value: str):
+        if key in Feature.fields.keys():
+            self[key] = value
+        else:
+            self["extras"][key] = value
 
-def get_lat_lon(item: Feature) -> (float, float):
+    def get_tag(self, key: str) -> Any:
+        if key in Feature.fields.keys():
+            return self.get(key)
+        else:
+            return self["extras"].get(key)
+
+    def has_valid_country_code(self) -> bool:
+        """
+        Determine if the feature's country is a valid ISO 3166-1 alpha-2 code.
+
+        :return: True or False for whether the feature's country is a valid
+                 ISO 3166-1 alpha-2 code.
+        """
+        if not self.get("country"):
+            return False
+        if self["country"] not in [country.alpha_2 for country in pycountry.countries]:
+            return False
+        return True
+
+    def get_iso_3166_2_code(self) -> str | None:
+        """
+        Return an ISO 3166-2 code (both first and second parts combined with
+        a hyphen joining the parts) if the feature has a valid ISO 3166-2
+        country and state defined. Otherwise return None.
+
+        :return: ISO 3166-2 code or None if a code cannot be generated for
+                 the feature's defined country and state.
+        """
+        if not self.get("country"):
+            return None
+        if not self.get("state"):
+            return None
+        if not self.has_valid_country_code():
+            return None
+        for subdivision in pycountry.subdivisions.get(country_code=self["country"]):
+            if self["state"] in [subdivision.code.split("-", 1)[1], subdivision.name]:
+                return subdivision.code
+        return None
+
+
+def get_lat_lon(item: Feature) -> tuple[float, float] | None:
+    """
+    Retrieve the latitude and longitude from a Feature if they are defined and
+    if they are in a valid format which can be converted to floating point
+    numbers. Preference is given to a Point object in the "geometry" field and
+    if this "geometry" field is not defined, the "lat" and "lon" fields are
+    used instead for extracting a latitude and longitude.
+
+    If the "geometry" field is not valid Point geometry, or the "lat" and "lon"
+    fields are invalid or not defined, this function will return None. Valid
+    latitudes are between -90.0 and 90.0 and valid longitudes are between
+    -180.0 and 180.0.
+
+    :param item: Feature which may or may not have valid geometry defined.
+    :return: tuple of two floating point numbers for latitude and longitude
+             respectively, or None if no valid geometry is defined.
+    """
+    lat_untyped = None
+    lon_untyped = None
     if geometry := item.get("geometry"):
         if isinstance(geometry, dict):
             if geometry.get("type") == "Point":
                 if coords := geometry.get("coordinates"):
-                    try:
-                        return float(coords[1]), float(coords[0])
-                    except (TypeError, ValueError):
-                        item["geometry"] = None
+                    if isinstance(coords, list):
+                        if len(coords) == 2:
+                            lat_untyped = coords[1]
+                            lon_untyped = coords[0]
     else:
-        try:
-            return float(item.get("lat")), float(item.get("lon"))
-        except (TypeError, ValueError):
-            pass
-    return None
+        lat_untyped = item.get("lat")
+        lon_untyped = item.get("lon")
+    if lat_untyped is None or lon_untyped is None:
+        return None
+    try:
+        lat_typed = float(lat_untyped)
+        lon_typed = float(lon_untyped)
+    except (TypeError, ValueError):
+        return None
+    if lat_typed < -90.0 or lat_typed > 90.0 or lon_typed < -180.0 or lon_typed > 180.0:
+        return None
+    return (lat_typed, lon_typed)
 
 
-def set_lat_lon(item: Feature, lat: float, lon: float):
+def set_lat_lon(item: Feature, lat: float, lon: float) -> None:
+    """
+    Adds or overwrites Point geometry on a Feature from supplied
+    floating point latitude and longitude values. If the supplied latitude is
+    invalid (outside of range -90.0 to 90.0) or the supplied longitude is
+    invalid then this function does not do anything.
+
+    :param item: Feature to add Point geometry to.
+    :param lat: floating point latitude with value between -90.0 and 90.0.
+    :param lon: floating point longitude with value between -180.0 and 180.0.
+    """
+    if not isinstance(lat, float) or not isinstance(lon, float):
+        return
+    if lat < -90.0 or lat > 90.0 or lon < -180.0 or lon > 180.0:
+        return
     item.pop("lat", None)
     item.pop("lon", None)
-    if lat and lon:
-        item["geometry"] = {
-            "type": "Point",
-            "coordinates": [lon, lat],
-        }
-    else:
-        item["geometry"] = None
+    item["geometry"] = {
+        "type": "Point",
+        "coordinates": [lon, lat],
+    }
 
 
 class SocialMedia(Enum):
@@ -108,17 +193,12 @@ def get_social_media(item: Feature, service: str | Enum) -> str:
         raise TypeError("string or Enum required")
 
     if service_str in item.fields:
-        return item.get(service_str)
+        return str(item.get(service_str))
     else:
-        return item["extras"].get("contact:{}".format(service_str))
+        return str(item["extras"].get("contact:{}".format(service_str)))
 
 
-def add_social_media(item: Feature, service: str, account: str):
-    """Deprecated, use set_social_media"""
-    set_social_media(item, service, account)
-
-
-def set_social_media(item: Feature, service: str | Enum, account: str):
+def set_social_media(item: Feature, service: str | Enum, account: str) -> None:
     if isinstance(service, Enum):
         service_str = service.value
     elif isinstance(service, str):
@@ -132,7 +212,7 @@ def set_social_media(item: Feature, service: str | Enum, account: str):
         item["extras"]["contact:{}".format(service_str)] = account
 
 
-def set_closed(item: Feature, end_date: datetime = None):
+def set_closed(item: Feature, end_date: datetime | None = None) -> None:
     item["extras"]["end_date"] = end_date.strftime("%Y-%m-%d") if end_date else "yes"
 
 
@@ -178,6 +258,8 @@ KEYS_THAT_SHOULD_MATCH = [
     "brand_wikidata",
     "operator",
     "operator_wikidata",
+    "network",
+    "network_wikidata",
     "located_in",
     "located_in_wikidata",
     "nsi_id",

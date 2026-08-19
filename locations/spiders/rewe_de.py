@@ -1,18 +1,20 @@
 from scrapy.spiders import SitemapSpider
 
 from locations.categories import Categories, apply_category
+from locations.playwright_spider import PlaywrightSpider
 from locations.settings import DEFAULT_PLAYWRIGHT_SETTINGS
 from locations.structured_data_spider import StructuredDataSpider
 
 
-class ReweDESpider(SitemapSpider, StructuredDataSpider):
+class ReweDESpider(SitemapSpider, StructuredDataSpider, PlaywrightSpider):
     name = "rewe_de"
     item_attributes = {"name": "Rewe", "brand": "Rewe", "brand_wikidata": "Q16968817"}
     allowed_domains = ["www.rewe.de"]
     sitemap_urls = ["https://www.rewe.de/sitemaps/sitemap-maerkte.xml"]
     sitemap_rules = [(r"/marktseite/[^/]+/(\d+)/[^/]+/$", "parse_sd")]
-    is_playwright_spider = True
-    custom_settings = DEFAULT_PLAYWRIGHT_SETTINGS
+    # Playwright needed to avoid blocking from certain IP address ranges.
+    # Probably use of data centre IPs is the main reason.
+    custom_settings = DEFAULT_PLAYWRIGHT_SETTINGS | {"PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 60 * 1000}
 
     def post_process_item(self, item, response, ld_data):
         item["name"] = None

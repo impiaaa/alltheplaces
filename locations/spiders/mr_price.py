@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 from scrapy import Spider
 from scrapy.http import JsonRequest
 
@@ -16,7 +18,7 @@ class MrPriceSpider(Spider):
     name = "mr_price"
     start_urls = ["https://apiprd.omni.mrpg.com/graphql"]
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         for url in self.start_urls:
             yield JsonRequest(
                 url=url,
@@ -48,6 +50,6 @@ class MrPriceSpider(Spider):
                 for day in DAYS_FULL:
                     if location.get(day.lower() + "s") is not None:
                         oh.add_ranges_from_string(day + " " + location.get(day.lower() + "s"))
-            item["opening_hours"] = oh.as_opening_hours()
+            item["opening_hours"] = oh
 
             yield item

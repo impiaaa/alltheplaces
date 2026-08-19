@@ -1,9 +1,10 @@
 import re
+from typing import AsyncIterator
 
 from scrapy import Spider
 from scrapy.http import Request
 
-from locations.categories import Categories
+from locations.categories import Categories, apply_category
 from locations.hours import OpeningHours
 from locations.items import Feature
 from locations.pipelines.address_clean_up import clean_address
@@ -11,10 +12,10 @@ from locations.pipelines.address_clean_up import clean_address
 
 class ZambreroAUSpider(Spider):
     name = "zambrero_au"
-    item_attributes = {"brand": "Zambrero", "brand_wikidata": "Q18636431", "extras": Categories.FAST_FOOD.value}
+    item_attributes = {"brand": "Zambrero", "brand_wikidata": "Q18636431"}
     allowed_domains = ["www.zambrero.com.au"]
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[Request]:
         yield Request(url=f"https://{self.allowed_domains[0]}/locations", callback=self.parse_location_list)
 
     def parse_location_list(self, response):
@@ -25,7 +26,7 @@ class ZambreroAUSpider(Spider):
     def parse_location(self, response):
         properties = {
             "ref": response.xpath("//@data-location-id").get(),
-            "name": re.sub(r"\s+", " ", response.xpath("//div[@data-location-id]/h4/text()").get()).strip(),
+            "branch": re.sub(r"\s+", " ", response.xpath("//div[@data-location-id]/h4/text()").get()).strip(),
             "lat": response.xpath("//@data-lat").get(),
             "lon": response.xpath("///@data-lng").get(),
             "addr_full": clean_address(
@@ -36,7 +37,7 @@ class ZambreroAUSpider(Spider):
             "website": response.url,
             "opening_hours": OpeningHours(),
         }
-        if "Temporarily Closed" in properties["name"]:
+        if "Temporarily Closed" in properties["branch"]:
             return
         if properties["phone"] == "0":
             properties.pop("phone")
@@ -53,4 +54,5 @@ class ZambreroAUSpider(Spider):
         if not properties["opening_hours"].as_opening_hours():
             return
 
+        apply_category(Categories.FAST_FOOD, properties)
         yield Feature(**properties)

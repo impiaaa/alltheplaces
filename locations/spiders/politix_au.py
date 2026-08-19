@@ -1,9 +1,10 @@
 import re
+from typing import AsyncIterator
 
 from scrapy import Spider
 from scrapy.http import JsonRequest
 
-from locations.categories import Categories, apply_category
+from locations.categories import Categories, Clothes, apply_category, apply_clothes
 from locations.dict_parser import DictParser
 from locations.hours import OpeningHours
 
@@ -16,7 +17,7 @@ class PolitixAUSpider(Spider):
     ]
     custom_settings = {"ROBOTSTXT_OBEY": False}
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         for url in self.start_urls:
             yield JsonRequest(url=url)
 
@@ -36,5 +37,5 @@ class PolitixAUSpider(Spider):
                 if " (" in item["name"]:
                     item["name"] = item["name"].split(" (")[0]
                 apply_category(Categories.SHOP_CLOTHES, item)
-                apply_category({"clothes": "men"}, item)
+                apply_clothes(Clothes.MEN, item)
                 yield item

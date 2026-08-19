@@ -5,28 +5,23 @@ from scrapy.spiders import CSVFeedSpider
 
 from locations.categories import Categories, apply_category, get_category_tags
 from locations.items import Feature, set_closed
+from locations.licenses import Licenses
 from locations.pipelines.address_clean_up import clean_address
 from locations.settings import ITEM_PIPELINES
 
 
 class GovDfeGiasGBSpider(CSVFeedSpider):
-    download_timeout = 400
     name = "gov_dfe_gias_gb"
     # Using yesterday because it may run early in the morning and 'today' may not be ready
     yesterday = datetime.today() - timedelta(1)
     start_urls = [
         f"https://ea-edubase-api-prod.azurewebsites.net/edubase/downloads/public/edubasealldata{yesterday.year}{yesterday.month:02d}{yesterday.day:02d}.csv"
     ]
-    dataset_attributes = {
-        "license": "Open Government Licence v3.0",
-        "license:website": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-        "license:wikidata": "Q99891702",
-        "attribution": "required",
-        "attribution:name": "Contains public sector information licensed under the Open Government Licence v3.0.",
-    }
+    dataset_attributes = Licenses.GB_OGLv3.value
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
         "ITEM_PIPELINES": ITEM_PIPELINES | {"locations.pipelines.count_operators.CountOperatorsPipeline": None},
+        "DOWNLOAD_TIMEOUT": 400,
     }
     # British OSGB36 -> lat/lon (https://epsg.io/4326)
     coord_transformer = pyproj.Transformer.from_crs(27700, 4326)
@@ -55,7 +50,7 @@ class GovDfeGiasGBSpider(CSVFeedSpider):
             return
 
         self.set_category(item, row)
-        if get_category_tags(item) is None:
+        if not get_category_tags(item):
             return
 
         if row.get("Easting") not in ["0", ""] and row.get("Northing") not in ["0", ""]:

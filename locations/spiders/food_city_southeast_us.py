@@ -1,7 +1,7 @@
-from typing import Any, Iterable
+from typing import Any, AsyncIterator
 
-from scrapy import Request, Spider
-from scrapy.http import Response
+from scrapy import Spider
+from scrapy.http import Request, Response
 
 from locations.categories import Extras, apply_yes_no
 from locations.hours import OpeningHours
@@ -22,7 +22,7 @@ class FoodCitySoutheastUSSpider(Spider):
             meta=dict(offset=offset),
         )
 
-    def start_requests(self) -> Iterable[Request]:
+    async def start(self) -> AsyncIterator[Request]:
         yield self._make_request(0)
 
     def parse(self, response: Response, **kwargs: Any) -> Any:
@@ -50,9 +50,7 @@ class FoodCitySoutheastUSSpider(Spider):
             for location_hours in store_listing.xpath(".//*[@class='hours']"):
                 h2 = location_hours.xpath("./h2/text()").get()
                 if h2 == "Store Hours":
-                    item["opening_hours"] = self.parse_opening_hours(
-                        location_hours.xpath("./p/text()").getall()
-                    ).as_opening_hours()
+                    item["opening_hours"] = self.parse_opening_hours(location_hours.xpath("./p/text()").getall())
                 if h2 == "Pharmacy Hours":
                     item["extras"]["opening_hours:pharmacy"] = self.parse_opening_hours(
                         location_hours.xpath("./p/text()").getall()

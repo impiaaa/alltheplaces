@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 from scrapy import Spider
 from scrapy.http import JsonRequest
 
@@ -41,8 +43,9 @@ class OkFoodsSpider(Spider):
         "ESWATINI": "https://www.okfoods.co.za/content/okfoods/sz/en_SZ/find-a-store.html",
         "SOUTH AFRICA": "https://www.okfoods.co.za/find-a-store.html",
     }
+    requires_proxy = True
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         for url in self.start_urls:
             yield JsonRequest(url=url, callback=self.parse)
 
@@ -92,7 +95,7 @@ class OkFoodsSpider(Spider):
                         oh.set_closed(day)
                 # Fully undefined opening hours should not be treated as closed
                 if "".join([location[day].strip() for day in DAYS_FULL]) != "":
-                    item["opening_hours"] = oh.as_opening_hours()
+                    item["opening_hours"] = oh
             except Exception:
                 pass
 

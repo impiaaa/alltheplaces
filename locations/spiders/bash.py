@@ -1,10 +1,11 @@
 import re
+from typing import AsyncIterator
 
 from chompjs import parse_js_object
 from scrapy.http import JsonRequest, Request
 
 from locations.categories import Categories
-from locations.hours import DAYS, OpeningHours
+from locations.hours import DAYS_FROM_SUNDAY, OpeningHours
 from locations.items import get_lat_lon, set_closed
 from locations.json_blob_spider import JSONBlobSpider
 from locations.pipelines.address_clean_up import clean_address
@@ -31,11 +32,11 @@ BASH_BRANDS = {
     "FIX": {"brand": "The FIX", "brand_wikidata": "Q116379523"},
     "FOSCHINI": {"brand": "Foschini", "brand_wikidata": "Q116391780"},
     "FOS": {"brand": "Foschini", "brand_wikidata": "Q116391780"},
-    "G-STAR RAW": {"brand": "G-Star RAW", "brand_wikidata": "Q1484081"},
-    "G-STAR": {"brand": "G-Star RAW", "brand_wikidata": "Q1484081"},
+    "G-STAR RAW": {"brand": "G-Star Raw", "brand_wikidata": "Q1484081"},
+    "G-STAR": {"brand": "G-Star Raw", "brand_wikidata": "Q1484081"},
     "HI": {"brand": "hi", "brand_wikidata": "Q116431177", "extras": Categories.SHOP_CLOTHES.value},
     "@HOME LIVINGSPACE": {"brand": "@Home Livingspace", "brand_wikidata": "Q117406343"},
-    "@HOME": {"brand": "@Home", "brand_wikidata": "Q116429887"},
+    "@HOME": {"brand": "@home", "brand_wikidata": "Q116429887"},
     "LUELLA": {"brand": "Luella", "brand_wikidata": "Q117406783", "extras": Categories.SHOP_VARIETY_STORE.value},
     "JET": {"brand": "Jet", "brand_wikidata": "Q61995123"},
     "MARKHAM": {"brand": "Markham", "brand_wikidata": "Q116378583"},
@@ -57,8 +58,8 @@ BASH_BRANDS = {
     "SF": {"brand": "The Sneaker Factory", "brand_wikidata": "Q116290301"},
     "SNEAKER FACTORY": {"brand": "The Sneaker Factory", "brand_wikidata": "Q116290301"},
     "SODA BLOC": {"brand": "SODA Bloc", "brand_wikidata": "Q117406709", "extras": Categories.SHOP_CLOTHES.value},
-    "SPORTSCENE": {"brand": "Sportscene", "brand_wikidata": "Q116378841"},
-    "SS": {"brand": "Sportscene", "brand_wikidata": "Q116378841"},
+    "SPORTSCENE": {"brand": "sportscene", "brand_wikidata": "Q116378841"},
+    "SS": {"brand": "sportscene", "brand_wikidata": "Q116378841"},
     "STERNS": {"brand": "Sterns", "brand_wikidata": "Q116430300"},
     "STN": {"brand": "Sterns", "brand_wikidata": "Q116430300"},
     "TOTALSPORTS": {"brand": "Totalsports", "brand_wikidata": "Q116379123"},
@@ -75,7 +76,7 @@ class BashSpider(JSONBlobSpider):
     allowed_domains = ["bash.com"]
     start_urls = ["https://bash.com/store-finder"]
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[Request]:
         self.brand_name_regex = re.compile(r"^(" + "|".join(BASH_BRANDS) + r") ", re.IGNORECASE)
         for url in self.start_urls:
             yield Request(url=url, callback=self.fetch_json)
@@ -126,7 +127,10 @@ class BashSpider(JSONBlobSpider):
         item["opening_hours"] = OpeningHours()
         for hours_range in location["businessHours"]:
             item["opening_hours"].add_range(
-                DAYS[hours_range["dayOfWeek"]], hours_range["openingTime"], hours_range["closingTime"], "%H:%M:%S"
+                DAYS_FROM_SUNDAY[hours_range["dayOfWeek"]],
+                hours_range["openingTime"],
+                hours_range["closingTime"],
+                "%H:%M:%S",
             )
 
         if m := self.brand_name_regex.match(item["name"]):

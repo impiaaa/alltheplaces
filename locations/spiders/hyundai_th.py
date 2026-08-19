@@ -1,8 +1,9 @@
-from typing import Iterable
+from copy import deepcopy
+from typing import AsyncIterator, Iterable
 
 from scrapy.http import FormRequest, Response
 
-from locations.categories import Categories, apply_category
+from locations.categories import Categories, Extras, apply_category, apply_yes_no
 from locations.items import Feature
 from locations.json_blob_spider import JSONBlobSpider
 from locations.spiders.hyundai_kr import HYUNDAI_SHARED_ATTRIBUTES
@@ -14,7 +15,7 @@ class HyundaiTHSpider(JSONBlobSpider):
     allowed_domains = ["www.hyundai.com"]
     start_urls = ["https://www.hyundai.com/wsvc/template_en/spa/common/dealer/list.html"]
 
-    def start_requests(self) -> Iterable[FormRequest]:
+    async def start(self) -> AsyncIterator[FormRequest]:
         headers = {
             "Accept": "application/json",
             "Referer": "https://www.hyundai.com/th/th/build-a-car/find-a-dealer",
@@ -45,5 +46,20 @@ class HyundaiTHSpider(JSONBlobSpider):
         item["addr_full"] = feature.get("dealer_address")
         item["postcode"] = feature.get("dealer_post_code")
         item["phone"] = feature.get("dealer_phone1", "").removeprefix("Tel ")
-        apply_category(Categories.SHOP_CAR, item)
-        yield item
+
+        services = feature.get("dealer_service_nm", "")
+        has_showroom = "โชว์รูม" in services  # showroom
+        has_service = "ศูนย์ซ่อมบริการ" in services  # service centre
+
+        if has_showroom:
+            sales_item = deepcopy(item)
+            sales_item["ref"] = f"{item['ref']}-sales"
+            apply_category(Categories.SHOP_CAR, sales_item)
+            apply_yes_no(Extras.CAR_REPAIR, sales_item, has_service)
+            yield sales_item
+
+        if has_service:
+            service_item = deepcopy(item)
+            service_item["ref"] = f"{item['ref']}-service"
+            apply_category(Categories.SHOP_CAR_REPAIR, service_item)
+            yield service_item

@@ -13,6 +13,7 @@ class DinosolESSpider(Spider):
     name = "dinosol_es"
     allowed_domains = ["www.hiperdino.es"]
     start_urls = ["https://www.hiperdino.es/c9504/tiendas/"]
+    requires_proxy = True
     brands = [
         (
             "HIPERDINO EXPRESS",
@@ -39,7 +40,6 @@ class DinosolESSpider(Spider):
             {"brand": "SuperDino", "brand_wikidata": "Q105955304", "extras": Categories.SHOP_SUPERMARKET.value},
         ),
     ]
-    download_delay = 0.2
 
     def parse(self, response: Response):
         for island_id in response.xpath('//select[@name="island"]/option/@value').getall():
@@ -53,12 +53,10 @@ class DinosolESSpider(Spider):
         )
 
     def parse_stores_list(self, response: Response):
-        # Parse individual store pages
         store_pages = response.xpath('//div[contains(@class, "tiendas__info")]/span/a/@href').getall()
         for store_page in store_pages:
             yield Request(url=store_page, callback=self.parse_store)
 
-        # Parse all other pages of store locations for each island
         current_page_number = response.meta["page_number"]
         if current_page_number == 1:
             island_id = response.meta["island_id"]
@@ -92,11 +90,9 @@ class DinosolESSpider(Spider):
                 response.xpath('//div[@class="page-corporate__tiendas"]/div[1]/div[1]/div[1]/h3/text()').get().strip()
             )
 
-        # Ignore warehouses
         if properties["name"].upper().startswith("CENTRO DISTRIBUCIÓN ONLINE"):
             return
 
-        # Brand detection
         if properties["name"]:
             for brand in self.brands:
                 if properties["name"].startswith(brand[0]):
@@ -108,7 +104,6 @@ class DinosolESSpider(Spider):
         if not properties.get("brand"):
             self.logger.error("Brand could not be determined from store webpage: {}".format(response.url))
 
-        # Opening hours
         hours_string = re.sub(
             r"\s+", " ", " ".join(response.xpath('//div[contains(@class, "tienda__item")]/p[2]/text()').getall())
         ).strip()

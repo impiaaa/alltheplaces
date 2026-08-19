@@ -1,18 +1,20 @@
+from typing import AsyncIterator
 from urllib.parse import urlencode
 
-import scrapy
+from scrapy import Spider
+from scrapy.http import Request
 
 from locations.hours import DAYS, OpeningHours
 from locations.items import Feature
 from locations.searchable_points import open_searchable_points
 
 
-class DollaramaSpider(scrapy.Spider):
+class DollaramaSpider(Spider):
     name = "dollarama"
     item_attributes = {"brand": "Dollarama", "brand_wikidata": "Q3033947"}
     allowed_domains = ["dollarama.com"]
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[Request]:
         base_url = "https://www.dollarama.com/en-CA/locations/GetDataByCoordinates?"
 
         params = {"distance": "100", "units": "miles"}
@@ -22,7 +24,7 @@ class DollaramaSpider(scrapy.Spider):
             for point in points:
                 _, lat, lon = point.strip().split(",")
                 params |= {"latitude": lat, "longitude": lon}
-                yield scrapy.Request(url=base_url + urlencode(params), method="POST")
+                yield Request(url=base_url + urlencode(params), method="POST")
 
     def parse_hours(self, hours):
         hrs = hours.split("|")
@@ -33,14 +35,9 @@ class DollaramaSpider(scrapy.Spider):
             if hour == "Closed":
                 continue
             open_time, close_time = hour.split("-")
-            opening_hours.add_range(
-                day=day,
-                open_time=open_time,
-                close_time=close_time,
-                time_format="%I:%M%p",
-            )
+            opening_hours.add_range(day, open_time, close_time, "%I:%M%p")
 
-        return opening_hours.as_opening_hours()
+        return opening_hours
 
     def parse(self, response):
         data = response.json()
@@ -61,8 +58,7 @@ class DollaramaSpider(scrapy.Spider):
 
             if opening_hours := row["ExtraData"].get("Hours of operations"):
                 try:
-                    hours = self.parse_hours(opening_hours)
-                    properties["opening_hours"] = hours
+                    properties["opening_hours"] = self.parse_hours(opening_hours)
                 except Exception as e:
                     self.logger.warning(f"Failed to parse opening hours for {opening_hours}, {e}")
                     self.crawler.stats.inc_value(f"atp/{self.name}/hours/failed")

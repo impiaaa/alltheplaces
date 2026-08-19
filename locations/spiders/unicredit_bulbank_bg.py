@@ -11,8 +11,7 @@ class UnicreditBulbankBGSpider(JSONBlobSpider):
         "https://www.unicreditbulbank.bg/bg/api/locations/branches.json",
         "https://www.unicreditbulbank.bg/bg/api/locations/atms.json",
     ]
-    custom_settings = {"ROBOTSTXT_OBEY": False}
-    user_agent = BROWSER_DEFAULT
+    custom_settings = {"ROBOTSTXT_OBEY": False, "USER_AGENT": BROWSER_DEFAULT}
     locations_key = "data"
 
     def post_process_item(self, item, response, location):
@@ -23,8 +22,7 @@ class UnicreditBulbankBGSpider(JSONBlobSpider):
             apply_category(Categories.BANK, item)
         if workhours := location.get("workhours"):
             item["opening_hours"] = oh = OpeningHours()
-            for k, v in workhours.items():
-                r = v.split(" - ")
-                oh.add_range(DAYS_EN[k.title()], r[0], r[1])
+            for day, hours in workhours.items():
+                oh.add_ranges_from_string(f"{day} {hours}", DAYS_EN)
         item["street_address"] = item.pop("addr_full", None)
         yield item

@@ -1,31 +1,39 @@
-from scrapy import Request, Spider
+from typing import Any
+
+from scrapy import Spider
+from scrapy.http import Response
 
 from locations.categories import Categories, apply_category, apply_yes_no
 from locations.items import Feature
-from locations.settings import ITEM_PIPELINES
+from locations.licenses import Licenses
 from locations.user_agents import BROWSER_DEFAULT
 
 
 class GovCmaFuelGBSpider(Spider):
     name = "gov_cma_fuel_gb"
-    dataset_attributes = {
-        "license": "Open Government Licence v3.0",
-        "license:website": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-        "license:wikidata": "Q99891702",
-        "attribution": "required",
-        "attribution:name": "Contains public sector information licensed under the Open Government Licence v3.0.",
-    }
-    start_urls = ["https://www.gov.uk/guidance/access-fuel-price-data"]
+    dataset_attributes = Licenses.GB_OGLv3.value
+    start_urls = [
+        "https://fuelprices.asconagroup.co.uk/newfuel.json",
+        "https://storelocator.asda.com/fuel_prices_data.json",
+        # "https://www.bp.com/en_gb/united-kingdom/home/fuelprices/fuel_prices_data.json",
+        "https://fuelprices.esso.co.uk/latestdata.json",
+        "https://jetlocal.co.uk/fuel_prices_data.json",
+        "https://devapi.krlpos.com/integration/live_price/krl",
+        "https://www.morrisons.com/fuel-prices/fuel.json",
+        "https://moto-way.com/fuel-price/fuel_prices.json",
+        "https://fuel.motorfuelgroup.com/fuel_prices_data.json",
+        "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json",
+        "https://api.sainsburys.co.uk/v1/exports/latest/fuel_prices_data.json",
+        "https://www.sgnretail.uk/files/data/SGN_daily_fuel_prices.json",
+        "https://www.shell.co.uk/fuel-prices-data.html",
+        "https://www.tesco.com/fuel_prices/fuel_prices_data.json",
+    ]
     custom_settings = {
-        "ITEM_PIPELINES": ITEM_PIPELINES  # Disable NSI due to mismatch on Tesco Cafe
-        | {"locations.pipelines.apply_nsi_categories.ApplyNSICategoriesPipeline": None},
         "ROBOTSTXT_OBEY": False,  # Asda, Shell!
+        "USER_AGENT": BROWSER_DEFAULT,  # TESCO!
     }
-
-    user_agent = BROWSER_DEFAULT  # TESCO!
 
     brand_map = {
-        "applegreen": {"brand": "Applegreen", "brand_wikidata": "Q7178908"},
         "asda": {"brand": "Asda", "brand_wikidata": "Q297410"},
         "asda express": {"brand": "Asda Express", "brand_wikidata": "Q114826023"},
         "bp": {"brand": "BP", "brand_wikidata": "Q152057"},
@@ -39,6 +47,7 @@ class GovCmaFuelGBSpider(Spider):
         "shell": {"brand": "Shell", "brand_wikidata": "Q110716465"},
         "tesco": {"brand": "Tesco", "brand_wikidata": "Q487494"},
         "texaco": {"brand": "Texaco", "brand_wikidata": "Q775060"},
+        "valero": {"brand": "Valero", "brand_wikidata": "Q1283291"},
     }
 
     fuel_map = {
@@ -48,11 +57,7 @@ class GovCmaFuelGBSpider(Spider):
         # "SDV": "ethanol", # TODO: ?
     }
 
-    def parse(self, response, **kwargs):
-        for url in response.xpath("//table/tbody/tr/td[2]/text()").getall():
-            yield Request(url, self.parse_locations)
-
-    def parse_locations(self, response, **kwargs):
+    def parse(self, response: Response, **kwargs: Any) -> Any:
         for location in response.json()["stations"]:
             item = Feature()
             item["ref"] = location["site_id"]

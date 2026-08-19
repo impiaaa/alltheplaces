@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 from scrapy import Spider
 from scrapy.http import JsonRequest
 
@@ -11,7 +13,7 @@ class RomansPizzaSpider(Spider):
     start_urls = ["https://romanspizza.co.za/api"]
     item_attributes = {"brand_wikidata": "Q65079427"}
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         for url in self.start_urls:
             yield JsonRequest(
                 url=url,
@@ -44,6 +46,6 @@ class RomansPizzaSpider(Spider):
             oh = OpeningHours()
             for i in range(7):
                 oh.add_ranges_from_string(location["day_" + str(i)])
-            item["opening_hours"] = oh.as_opening_hours()
+            item["opening_hours"] = oh
 
             yield item

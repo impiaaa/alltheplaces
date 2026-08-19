@@ -1,4 +1,7 @@
+from typing import Any
+
 from scrapy import Spider
+from scrapy.http import Response
 
 from locations.hours import OpeningHours
 from locations.items import Feature
@@ -7,25 +10,27 @@ from locations.items import Feature
 class BargainBooksZASpider(Spider):
     name = "bargain_books_za"
     item_attributes = {"brand": "Bargain Books", "brand_wikidata": "Q116741024"}
-    start_urls = ["https://www.bargainbooks.co.za/store-locator/"]
-    no_refs = True
+    start_urls = ["https://www.bargainbooks.co.za/locations/"]
 
-    def parse(self, response):
-        for store in response.xpath("//tbody/tr"):
+    def parse(self, response: Response, **kwargs: Any) -> Any:
+        for location in response.xpath('//*[@id="bb-grid"]//*[@class="bb-card"]'):
             item = Feature()
-            item["branch"] = store.xpath('.//td[@class="column-1"]/text()').get()
-            item["phone"] = store.xpath('.//td[@class="column-2"]/text()').get()
-            item["addr_full"] = store.xpath('.//td[@class="column-3"]/text()[1]').get()
-            item["website"] = "https://www.bargainbooks.co.za/"
-            if email := store.xpath('.//td[@class="column-3"]/text()[2]').get():
-                item["email"] = email
-            item["opening_hours"] = OpeningHours()
-            for day, column in [("Monday-Thursday ", "4"), ("Friday ", "5"), ("Saturday ", "6"), ("Sunday ", "7")]:
-                try:
-                    item["opening_hours"].add_ranges_from_string(
-                        day + store.xpath(f'.//td[@class="column-{column}"]/text()').get()
-                    )
-                except TypeError:  # In case a cell is blank
-                    pass
+            item["branch"] = item["ref"] = location.xpath(".//@data-name").get()
+            item["state"] = location.xpath(".//@data-province").get()
+            item["addr_full"] = location.xpath(".//@data-address").get()
+            item["phone"] = location.xpath('.//*[contains(@href,"tel:")]/text()').get()
+            item["email"] = location.xpath('.//*[contains(@href,"mailto:")]/text()').get()
+            oh = OpeningHours()
+            for day_time in location.xpath('.//*[@class="bb-hours"]//tr'):
+                day = day_time.xpath('.//*[@class="bb-day"]/text()').get()
+                time = day_time.xpath('.//*[@class="bb-time "]//text()').get()
 
+                if not day or day == "Public" or not time:
+                    continue
+                if time.strip().lower() == "closed":
+                    oh.set_closed(day)
+                else:
+                    open_time, close_time = time.strip().replace(".", ":").replace(" ", "-").split("-")
+                    oh.add_range(day=day, open_time=open_time.strip(), close_time=close_time.strip())
+            item["opening_hours"] = oh
             yield item

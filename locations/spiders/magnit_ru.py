@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 from scrapy import Spider
 from scrapy.http import JsonRequest
 
@@ -22,7 +24,7 @@ class MagnitRUSpider(Spider):
     name = "magnit_ru"
     item_attributes = {"brand_wikidata": "Q940518"}
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         yield JsonRequest(
             url="https://web-gateway.middle-api.magnit.ru/v1/geolocation/store?Longitude=76.56962&Latitude=60.93967&Radius=100000&Limit=100000",
             headers={
@@ -56,6 +58,6 @@ class MagnitRUSpider(Spider):
             try:
                 oh = OpeningHours()
                 oh.add_days_range(DAYS, poi.get("openingHours"), poi.get("closingHours"))
-                item["opening_hours"] = oh.as_opening_hours()
+                item["opening_hours"] = oh
             except Exception as e:
                 self.logger.warning(f"Failed to parse hours: {e}, {poi}")

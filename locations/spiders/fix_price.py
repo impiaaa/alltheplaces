@@ -1,4 +1,6 @@
-import scrapy
+from typing import AsyncIterator
+
+from scrapy import Spider
 from scrapy.http import JsonRequest
 
 from locations.categories import Categories, Extras, PaymentMethods, apply_category, apply_yes_no
@@ -6,13 +8,13 @@ from locations.dict_parser import DictParser
 from locations.hours import NAMED_DAY_RANGES_EN, OpeningHours
 
 
-class FixPriceSpider(scrapy.Spider):
+class FixPriceSpider(Spider):
     name = "fix_price"
     item_attributes = {"brand": "Fix Price", "brand_wikidata": "Q4038791"}
     allowed_domains = ["api.fix-price.com"]
     requires_proxy = "RU"
 
-    def start_requests(self):
+    async def start(self) -> AsyncIterator[JsonRequest]:
         yield JsonRequest("https://api.fix-price.com/buyer/v1/location/country", callback=self.fetch_pois_for_country)
 
     def fetch_pois_for_country(self, response):
@@ -46,6 +48,6 @@ class FixPriceSpider(scrapy.Spider):
                 if schedule:
                     open, close = schedule.split("-")
                     oh.add_days_range(NAMED_DAY_RANGES_EN[day] if day == "Weekdays" else [day], open, close)
-            item["opening_hours"] = oh.as_opening_hours()
+            item["opening_hours"] = oh
         except Exception as e:
             self.logger.warning(f"Failed to parse hours: {schedule_data}, {e}")

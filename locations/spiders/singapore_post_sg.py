@@ -1,7 +1,7 @@
-from typing import Any, Iterable
+from typing import Any, AsyncIterator
 
-from scrapy import FormRequest, Request, Spider
-from scrapy.http import Response
+from scrapy import Spider
+from scrapy.http import FormRequest, Response
 
 from locations.categories import Categories, apply_category
 from locations.items import Feature
@@ -11,7 +11,7 @@ class SingaporePostSGSpider(Spider):
     name = "singapore_post_sg"
     item_attributes = {"operator": "Singapore Post", "operator_wikidata": "Q4049531"}
 
-    def start_requests(self) -> Iterable[Request]:
+    async def start(self) -> AsyncIterator[FormRequest]:
         # We need to collect cookies, locate-us-type is important
         yield FormRequest(
             url="https://www.singpost.com/locate-us",
@@ -37,7 +37,7 @@ class SingaporePostSGSpider(Spider):
             item["phone"] = location["phoneNumber"]
             item["housenumber"] = location["houseBlockNumber"]
             item["extras"]["addr:housename"] = location["buildingName"]
-            item["extras"]["addr:unit"] = location["unitNumber"]
+            item["unit"] = location["unitNumber"]
             item["street"] = location["streetName"]
             item["city"] = location["city"]
             item["postcode"] = location["postCode"]
