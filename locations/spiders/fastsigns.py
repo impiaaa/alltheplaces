@@ -1,3 +1,7 @@
+from urllib.parse import urljoin
+
+from scrapy import Request
+
 from locations.json_blob_spider import JSONBlobSpider
 from locations.pipelines.address_clean_up import merge_address_lines
 
@@ -7,11 +11,22 @@ class FastsignsSpider(JSONBlobSpider):
     item_attributes = {"brand": "Fastsigns", "brand_wikidata": "Q5437127"}
     # Not covered: Dominican Republic, Grand Cayman, Malta
     start_urls = [
-        "https://www.fastsigns.com/locations/?CallAjax=AllLocations",  # covers CA, PR, US
-        "https://www.fastsigns.co.uk/locations/?CallAjax=AllLocations",
-        "https://www.fastsigns.cl/locales/?CallAjax=AllLocations",
-        "https://www.signwave.com.au/locations/?CallAjax=AllLocations",
+        "https://www.fastsigns.com/Systems-Advanced-Map.svc?action=GetMapData",  # covers CA, PR, US
+        "https://www.fastsigns.co.uk/Systems-Advanced-Map.svc?action=GetMapData",
+        "https://www.fastsigns.cl/locales/?CallAjax=GetLocationsUSC3",
+        "https://www.signwave.com.au/Systems-Advanced-Map.svc?action=GetMapData",
     ]
+
+    async def start(self):
+        for url in self.start_urls:
+            yield Request(url, headers={"x-request-from": urljoin(url, "/locations/")})
+
+    def extract_json(self, response):
+        json_data = response.json()
+        if localities := json_data.get("Localities"):
+            return localities
+        else:
+            return json_data["Locations"]
 
     def post_process_item(self, item, response, location):
         item.pop("name")
@@ -21,8 +36,6 @@ class FastsignsSpider(JSONBlobSpider):
         item["branch"] = location["FriendlyName"]
         item["website"] = response.urljoin(location["Path"])
 
-        if location["LaunchDate"][:10] not in ("2021-07-19", "2022-07-07", "2022-08-29", "2022-11-28"):
-            item["extras"]["start_date"] = location["LaunchDate"][:10]
         if location["StorefrontImage"]:
             item["image"] = response.urljoin(location["StorefrontImage"])
 
